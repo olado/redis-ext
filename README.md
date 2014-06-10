@@ -36,4 +36,4 @@ It also provides basic job queue implementation.
 Laura Doktorova @olado
 
 ## License
-redis-ext is licensed under the MIT License. (See LICENSE-DOT)
+redis-ext is licensed under the MIT License
