@@ -15,7 +15,7 @@ It also provides basic job queue implementation.
 			{host: "localhost", port: 26380},
 	]
 	/* possible options:
-	* retry_delay - minimum delay before attempting to reconnect, delay will grow up to retry_max_delay of provided
+	* retry_delay - minimum delay before attempting to reconnect, delay will grow up to retry_max_delay if provided
 	* retry_max_delay - maximum delay between reconnection attempts
 	* connect_timeout - if specified, retries will stop after total time for reconnecting exceeds this number 
 	*/
