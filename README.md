@@ -1,9 +1,10 @@
 Redis-ext extends nodejs redis client with failover support via Redis Sentinels.
+
 It also provides basic job queue implementation.
 
 ## Usage
 
-   Usage: create Sentinel aware connection
+   Create Sentinel aware connection:
  ```
 	var redis = require('redis-ext')
 	, _sentinels = [
@@ -14,7 +15,7 @@ It also provides basic job queue implementation.
 	, client = redis.createWithSentinel(_sentinels, "mastername", _options);
 
  ```
-   Usage: create receiving job client
+   Create receiving job client:
  ```
 	var queue = redis.createQueue(function () {
 		return redis.createWithSentinel(_sentinels, "queues", _options);
@@ -22,7 +23,7 @@ It also provides basic job queue implementation.
 
 	queue.connect(); // start receiving jobs
  ```
-   Usage: create job queue
+   Create job queue:
  ```
 	var queue = redis.createQueue(function () {
 		return redis.createWithSentinel(_sentinels, "queues", _options);
