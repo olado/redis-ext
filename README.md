@@ -2,6 +2,9 @@ Redis-ext extends nodejs redis client with failover support via Redis Sentinels.
 
 It also provides basic job queue implementation.
 
+## Installation
+	npm install redis-ext
+	
 ## Usage
 
    Create Sentinel aware connection:
@@ -11,6 +14,11 @@ It also provides basic job queue implementation.
 			{host: "localhost", port: 26379},
 			{host: "localhost", port: 26380},
 	]
+	/* possible options:
+	* retry_delay - minimum delay before attempting to reconnect, delay will grow up to retry_max_delay of provided
+	* retry_max_delay - maximum delay between reconnection attempts
+	* connect_timeout - if specified, retries will stop after total time for reconnecting exceeds this number 
+	*/
 	, _options = { retry_max_delay: 10000 }
 	, client = redis.createWithSentinel(_sentinels, "mastername", _options);
 
