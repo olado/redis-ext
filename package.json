@@ -1,0 +1,24 @@
+{
+  "name": "redis-ext",
+  "description": "Extension for nodejs redis client library with support for failover with sentinels",
+  "keywords": [
+    "redis",
+    "sentinel",
+    "failover"
+  ],
+  "version": "0.1.0",
+  "main": "redis-ext",
+  "homepage": "http://github.com/olado/redis-ext",
+  "repository": "git://github.com/olado/redis-ext.git",
+  "author": "Laura Doktorova <ldoktorova@gmail.com>",
+  "engines": [
+    "node >=0.2.6"
+  ],
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "redis": "*",
+    "debug": "*"
+  }
+}
