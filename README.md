@@ -27,7 +27,7 @@ It also provides basic job queue implementation.
  ```
 	var queue = redis.createQueue(function () {
 		return redis.createWithSentinel(_sentinels, "queues", _options);
-	}, key, workerFn);
+	}, key);
 
 	queue.send(jobdescription);
  ```
