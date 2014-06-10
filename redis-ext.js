@@ -77,7 +77,7 @@ Sentinel.prototype.createClient = function(master, options) {
 		}
 	};
 
-    client.connection_gone = function(why) {
+	client.connection_gone = function(why) {
 		debug("in connection gone " + master + " - " + why + " for " + client.host + ":" + client.port + ". Is closing? " + client.closing);
 		if (client.keepalive && !client.closing
 			&& (why === 'error' || why === 'end' || why === 'close')) {
@@ -169,7 +169,7 @@ function getMasterFromSentinel(endpoint, master, callback) {
 		callback(new Error("Unkown master name: " + master));
 	});
 
-sentinelClient.quit();
+	sentinelClient.quit();
 }
 
 /*****************************************************************************
