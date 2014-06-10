@@ -14,7 +14,7 @@ This module is being used in production environment for several months now.
 	var redis = require('redis-ext')
 	, _sentinels = [
 			{host: "localhost", port: 26379},
-			{host: "localhost", port: 26380},
+			{host: "localhost", port: 26380}
 	]
 	/* possible options:
 	* retry_delay - minimum delay before attempting to reconnect, delay will grow up to retry_max_delay if provided
