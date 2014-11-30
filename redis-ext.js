@@ -135,7 +135,7 @@ Sentinel.prototype.getMaster = function(master, callback) {
 		} else {
 			if (index) {
 				var failed = self.sentinels[0];
-				self.sentinesl[0] = self.sentinels[index];
+				self.sentinels[0] = self.sentinels[index];
 				self.sentinels[index] = failed;
 			}
 			callback(null, host, port);
