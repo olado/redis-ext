@@ -6,7 +6,7 @@
     "sentinel",
     "failover"
   ],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "redis-ext",
   "homepage": "http://github.com/olado/redis-ext",
   "repository": "git://github.com/olado/redis-ext.git",
