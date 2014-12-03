@@ -2,7 +2,7 @@ Redis-ext extends nodejs redis client with failover support via Redis Sentinels.
 
 It also provides basic job queue implementation.
 
-This module is being used in production environment for several months now.
+This module is being used in production environment.
 
 ## Installation
 	npm install redis-ext
