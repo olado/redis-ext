@@ -27,7 +27,8 @@ redis.createQueue = function(client, queuekey, workFn) {
  * Seemless sentinel support with auto-reconnect
  *****************************************************************************/
 function Sentinel(sentinels) {
-	this.sentinels = sentinels;
+	this.sentinels = sentinels.concat();
+	this.clients = [];
 };
 
 Sentinel.prototype.createClient = function(master, options) {
@@ -63,7 +64,12 @@ Sentinel.prototype.createClient = function(master, options) {
 		});
 	}
 
+	function onFailover() {
+		client.connection_gone("error");
+	}
+
 	client.quit = function() {
+		self.unsubscribe(onFailover);
 		client.keepalive = false;
 		RedisClient.prototype.quit.call(client);
 	};
@@ -77,14 +83,14 @@ Sentinel.prototype.createClient = function(master, options) {
 		}
 	};
 
-	client.connection_gone = function(why) {
+    client.connection_gone = function(why) {
 		debug("in connection gone " + master + " - " + why + " for " + client.host + ":" + client.port + ". Is closing? " + client.closing);
 		if (client.keepalive && !client.closing
 			&& (why === 'error' || why === 'end' || why === 'close')) {
 			if (!client.connecting) {
 				retry_delay = Math.min(Math.floor(retry_delay * 1.7), retry_max_delay);
-				retry_total_time += retry_delay;
-				if (retry_max_total !== undefined && retry_total_time > retry_max_total) {
+        		retry_total_time += retry_delay;
+        		if (retry_max_total !== undefined && retry_total_time > retry_max_total) {
 					return RedisClient.prototype.connection_gone.call(client, why);
 				} else {
 					debug("retrying " + master + " in " + retry_delay + " ms");
@@ -102,6 +108,7 @@ Sentinel.prototype.createClient = function(master, options) {
 				clearTimeout(client.connecting);
 				client.connecting = undefined;
 			}
+
 			debug("in connect " + master + ": " + err + " " + host + ":" + port + " " + client.closing + " " + client.connected);
 			if (!client.closing) {
 				if (err || !host || !port) {
@@ -116,10 +123,61 @@ Sentinel.prototype.createClient = function(master, options) {
 		});
 	}
 
+	onFailover.master = master;
+	this.subscribe(onFailover);
 	connect();
 
 	return client;
 };
+
+Sentinel.prototype.subscribe = function(callback) {
+	this.clients.push(callback);
+};
+
+Sentinel.prototype.unsubscribe = function(callback) {
+	var index = this.clients.indexOf(callback);
+	if (index !== -1) this.clients.splice(index, 1);
+
+	if (this.clients.length === 0 && this.pubsubClient) {
+		debug("Unsubscribed from sentinel pubsub");
+		this.pubsubClient.unsubscribe();
+		this.pubsubClient.quit();
+		this.pubsubClient = null;
+	}
+};
+
+function updateSubscription() {
+	if (this.pubsubClient) {
+		this.pubsubClient.unsubscribe();
+		this.pubsubClient.quit();
+		this.pubsubClient = null;
+	}
+	if (this.clients.length && this.sentinels[0]) {
+		var self = this, endpoint = this.sentinels[0];
+		this.pubsubClient = redis.createClient(endpoint.port, endpoint.host,{max_attempts:1});
+		this.pubsubClient.on("message", function(channel, message) {
+			debug("got failover message from sentinel", message);
+			var switchedMaster = message.substring(0, message.indexOf(" "));
+			for(var i = self.clients.length-1; i>=0; i--) {
+				if (self.clients[i].master === switchedMaster) self.clients[i]();
+			}
+		});
+		this.pubsubClient.on("error", function(err) {
+			debug("on error", err);
+		});
+		this.pubsubClient.on("end", function(err) {
+			if (this === self.pubsubClient) {
+				debug("on pubsub end");
+				self.pubsubClient = null;
+				// lost connectin with sentinel, refresh connections
+				for(var i = self.clients.length-1; i>=0; i--) {
+					self.clients[i]();
+				}
+			}
+		});
+		this.pubsubClient.subscribe('+switch-master');
+	}
+}
 
 Sentinel.prototype.getMaster = function(master, callback) {
 	var total = this.sentinels.length, index = -1, self = this;
@@ -135,8 +193,14 @@ Sentinel.prototype.getMaster = function(master, callback) {
 		} else {
 			if (index) {
 				var failed = self.sentinels[0];
+				if (debug.enabled) debug("sentinel", failed.host, failed.port
+					, "failed, switching to"
+					, self.sentinels[index].host, self.sentinels[index].port);
 				self.sentinels[0] = self.sentinels[index];
 				self.sentinels[index] = failed;
+				updateSubscription.call(self);
+			} else if (!self.pubsubClient) {
+				updateSubscription.call(self);
 			}
 			callback(null, host, port);
 			return;
@@ -147,29 +211,29 @@ Sentinel.prototype.getMaster = function(master, callback) {
 };
 
 function getMasterFromSentinel(endpoint, master, callback) {
-	var callbackSent = false
-		, sentinelClient = redis.createClient(endpoint.port, endpoint.host, {max_attempts:1});
+    var callbackSent = false
+    	, sentinelClient = redis.createClient(endpoint.port, endpoint.host, {max_attempts:1});
 
-	sentinelClient.on("error", function(err) {
-		debug("error on talking to sentinel " + endpoint.host + " for " + master + ", " + callbackSent);
-		if (!callbackSent) {
-			callbackSent = true;
-			callback(err);
-		}
-		sentinelClient.end();
-	});
+    sentinelClient.on("error", function(err) {
+    	debug("error on talking to sentinel",endpoint.host,endpoint.port,"for",master,", ", callbackSent, err);
+        if (!callbackSent) {
+            callbackSent = true;
+            callback(err);
+        }
+        sentinelClient.end();
+    });
 
-	sentinelClient.send_command('SENTINEL', ['get-master-addr-by-name', master], function(err, result) {
-		if (callbackSent) return;
+    sentinelClient.send_command('SENTINEL', ['get-master-addr-by-name', master], function(err, result) {
+        if (callbackSent) return;
 
 		callbackSent = true;
-		if (err) return callback(err);
-		if (result) return callback(null, result[0], result[1]);
+        if (err) return callback(err);
+        if (result) return callback(null, result[0], result[1]);
 
-		callback(new Error("Unkown master name: " + master));
-	});
+        callback(new Error("Unkown master name: " + master));
+    });
 
-	sentinelClient.quit();
+    sentinelClient.quit();
 }
 
 /*****************************************************************************
